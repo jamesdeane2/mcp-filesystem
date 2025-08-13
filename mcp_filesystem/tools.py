@@ -10,7 +10,7 @@ def get_tools_list():
     return [
         Tool(
             name="execute_command",
-            description="Execute a shell command",
+            description="Execute a shell command. Use this for quick file operations (sed, awk, grep), system commands, or when you need more flexibility than the hash-based tools. Consider using sed/awk for simple text replacements, or shell commands for batch operations.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -28,7 +28,7 @@ def get_tools_list():
         ),
         Tool(
             name="list_files",
-            description="List files in a directory",
+            description="List files in a directory with optional file content previews",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -36,6 +36,21 @@ def get_tools_list():
                         "type": "string",
                         "description": "The directory path",
                         "default": "."
+                    },
+                    "include_preview": {
+                        "type": "boolean",
+                        "description": "Include preview of small text files",
+                        "default": False
+                    },
+                    "preview_lines": {
+                        "type": "integer",
+                        "description": "Number of lines to show in preview",
+                        "default": 3
+                    },
+                    "max_preview_size": {
+                        "type": "integer",
+                        "description": "Maximum file size for preview (bytes)",
+                        "default": 1024
                     }
                 }
             }
@@ -76,7 +91,7 @@ def get_tools_list():
         ),
         Tool(
             name="get_text_file_contents",
-            description="Read specific line ranges from text files and return hashes for safe editing",
+            description="Read specific line ranges from text files and return hashes for safe editing. Use this when you need to read file content or when you plan to make precise, hash-validated edits to ensure data integrity.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -121,7 +136,7 @@ def get_tools_list():
         ),
         Tool(
             name="create_text_file",
-            description="Create a new text file with given content",
+            description="Create a new text file with given content. Use this for creating new files from scratch or completely replacing file contents.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -144,7 +159,7 @@ def get_tools_list():
         ),
         Tool(
             name="append_text_file_contents",
-            description="Append content to the end of an existing file",
+            description="Append content to the end of an existing file with hash validation. Use this when you need to safely add content to a file and want to ensure no concurrent modifications occurred. For simple appends without validation concerns, consider using 'echo \"content\" >> file' with execute_command.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -171,7 +186,7 @@ def get_tools_list():
         ),
         Tool(
             name="insert_text_file_contents",
-            description="Insert content at a specific line position",
+            description="Insert content at a specific line position with hash validation. Use this for precise insertions when data integrity is critical. For simple insertions, consider using sed commands with execute_command (e.g., 'sed -i \"3i\\content\" file').",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -206,7 +221,7 @@ def get_tools_list():
         ),
         Tool(
             name="delete_text_file_contents",
-            description="Delete specific line ranges from a file",
+            description="Delete specific line ranges from a file with hash validation. Use this for precise deletions when data integrity is critical. For simple line deletions, consider using sed commands with execute_command (e.g., 'sed -i \"5,10d\" file').",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -250,7 +265,7 @@ def get_tools_list():
         ),
         Tool(
             name="patch_text_file_contents",
-            description="Replace specific line ranges with new content",
+            description="Replace specific line ranges with new content using hash validation. Use this for complex, precise replacements when data integrity is critical. For simple find/replace operations, consider using sed commands with execute_command (e.g., 'sed -i \"s/old/new/g\" file').",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -378,6 +393,92 @@ def get_tools_list():
                         "default": 24
                     }
                 }
+            }
+        ),
+        Tool(
+            name="quick_edit_line",
+            description="Replace a specific line in a file by line number. Use this for simple line replacements when you don't need hash validation - faster than hash-based tools for straightforward edits.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the text file"
+                    },
+                    "line_number": {
+                        "type": "integer",
+                        "description": "Line number to replace (1-based)"
+                    },
+                    "new_content": {
+                        "type": "string",
+                        "description": "New content for the line"
+                    },
+                    "encoding": {
+                        "type": "string",
+                        "description": "Text encoding",
+                        "default": "utf-8"
+                    }
+                },
+                "required": ["file_path", "line_number", "new_content"]
+            }
+        ),
+        Tool(
+            name="quick_find_replace",
+            description="Simple find and replace text in a file. Use this for straightforward text substitutions without hash validation - more convenient than sed for simple replacements.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the text file"
+                    },
+                    "find": {
+                        "type": "string",
+                        "description": "Text to find"
+                    },
+                    "replace": {
+                        "type": "string",
+                        "description": "Text to replace it with"
+                    },
+                    "line_start": {
+                        "type": "integer",
+                        "description": "Optional: start line for replacement range (1-based)"
+                    },
+                    "line_end": {
+                        "type": "integer",
+                        "description": "Optional: end line for replacement range (1-based)"
+                    },
+                    "max_replacements": {
+                        "type": "integer",
+                        "description": "Maximum number of replacements (0 for all)",
+                        "default": 0
+                    },
+                    "encoding": {
+                        "type": "string",
+                        "description": "Text encoding",
+                        "default": "utf-8"
+                    }
+                },
+                "required": ["file_path", "find", "replace"]
+            }
+        ),
+        Tool(
+            name="file_info",
+            description="Get file metadata including size, modification time, and permissions. Use this to understand file characteristics before editing or to check if files might be modified by other processes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the file"
+                    },
+                    "include_preview": {
+                        "type": "boolean",
+                        "description": "Include a small preview of file contents",
+                        "default": False
+                    }
+                },
+                "required": ["file_path"]
             }
         )
     ]

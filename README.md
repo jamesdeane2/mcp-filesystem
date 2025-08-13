@@ -74,6 +74,25 @@ Add to your Claude Desktop configuration file at `/Users/admin/Library/Applicati
 {
   "mcpServers": {
     "mcp-filesystem": {
+      "command": "/Users/admin/Documents/GitHub_James/mcp-filesystem/venv/bin/python",
+      "args": [
+        "-m",
+        "mcp_filesystem.server"
+      ],
+      "cwd": "/Users/admin/Documents/GitHub_James/mcp-filesystem"
+    }
+  }
+}
+```
+
+### Alternative: Using UV
+
+If you prefer to use UV instead of the virtual environment:
+
+```json
+{
+  "mcpServers": {
+    "mcp-filesystem": {
       "command": "uv",
       "args": [
         "run",
@@ -83,23 +102,6 @@ Add to your Claude Desktop configuration file at `/Users/admin/Library/Applicati
         "-m",
         "mcp_filesystem.server"
       ]
-    }
-  }
-}
-```
-
-Or using the direct Python approach:
-
-```json
-{
-  "mcpServers": {
-    "mcp-filesystem": {
-      "command": "python",
-      "args": [
-        "-m",
-        "mcp_filesystem.server"
-      ],
-      "cwd": "/Users/admin/Documents/GitHub_James/mcp-filesystem"
     }
   }
 }

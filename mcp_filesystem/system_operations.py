@@ -41,6 +41,9 @@ async def execute_command(args: Dict[str, Any]) -> List[TextContent]:
 async def list_files(args: Dict[str, Any]) -> List[TextContent]:
     """List files in a directory"""
     dir_path = args.get("path", ".")
+    include_preview = args.get("include_preview", False)
+    preview_lines = args.get("preview_lines", 3)
+    max_preview_size = args.get("max_preview_size", 1024)  # 1KB max for preview
     
     logger.info(f"Listing files in directory: {dir_path}")
     
@@ -57,7 +60,22 @@ async def list_files(args: Dict[str, Any]) -> List[TextContent]:
             if item.is_dir():
                 items.append(f"{item.name} (directory)")
             else:
-                items.append(f"{item.name} (file)")
+                file_info = f"{item.name} (file)"
+                
+                # Add preview for small text files if requested
+                if include_preview and item.is_file():
+                    try:
+                        if item.stat().st_size <= max_preview_size:
+                            with open(item, 'r', encoding='utf-8') as f:
+                                lines = f.readlines()[:preview_lines]
+                                if lines:
+                                    preview = ' | '.join(line.strip() for line in lines)
+                                    file_info += f" - Preview: {preview[:100]}{'...' if len(preview) > 100 else ''}"
+                    except (UnicodeDecodeError, PermissionError):
+                        # Skip preview for binary files or permission issues
+                        pass
+                
+                items.append(file_info)
         
         return [TextContent(type="text", text="\n".join(items) if items else "Empty directory")]
     except Exception as e:

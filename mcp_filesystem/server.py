@@ -71,6 +71,13 @@ class FilesystemServer:
                     return await async_operations.kill_command(arguments)
                 elif name == "cleanup_completed_commands":
                     return await async_operations.cleanup_completed_commands(arguments)
+                # Quick edit operations
+                elif name == "quick_edit_line":
+                    return await file_operations.quick_edit_line(arguments)
+                elif name == "quick_find_replace":
+                    return await file_operations.quick_find_replace(arguments)
+                elif name == "file_info":
+                    return await file_operations.file_info(arguments)
                 else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]
             except Exception as e:

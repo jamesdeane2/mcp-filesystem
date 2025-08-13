@@ -375,3 +375,194 @@ async def patch_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=f"Error patching file: {str(e)}")]
+
+
+
+async def quick_edit_line(args: Dict[str, Any]) -> List[TextContent]:
+    """Replace a specific line in a file by line number - no hash validation"""
+    file_path = args.get("file_path")
+    line_number = args.get("line_number")
+    new_content = args.get("new_content")
+    encoding = args.get("encoding", "utf-8")
+    
+    logger.info(f"Quick editing line {line_number} in file: {file_path}")
+    
+    try:
+        if not Path(file_path).exists():
+            return [TextContent(type="text", text=f"Error: File does not exist: {file_path}")]
+        
+        # Read file
+        with open(file_path, 'r', encoding=encoding) as f:
+            lines = f.readlines()
+        
+        # Validate line number
+        if line_number < 1 or line_number > len(lines):
+            return [TextContent(type="text", text=f"Error: Line number {line_number} out of range. File has {len(lines)} lines.")]
+        
+        # Replace the line (preserve newline if original had one)
+        original_line = lines[line_number - 1]
+        if original_line.endswith('\n'):
+            lines[line_number - 1] = new_content + '\n'
+        else:
+            lines[line_number - 1] = new_content
+        
+        # Write back
+        with open(file_path, 'w', encoding=encoding) as f:
+            f.writelines(lines)
+        
+        result = {
+            "success": True,
+            "file_path": file_path,
+            "line_number": line_number,
+            "old_content": original_line.rstrip('\n'),
+            "new_content": new_content,
+            "message": f"Line {line_number} updated successfully"
+        }
+        
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error editing line: {str(e)}")]
+
+
+async def quick_find_replace(args: Dict[str, Any]) -> List[TextContent]:
+    """Simple find and replace in a file - no hash validation"""
+    file_path = args.get("file_path")
+    find_text = args.get("find")
+    replace_text = args.get("replace")
+    line_start = args.get("line_start")
+    line_end = args.get("line_end")
+    max_replacements = args.get("max_replacements", 0)
+    encoding = args.get("encoding", "utf-8")
+    
+    logger.info(f"Quick find/replace in file: {file_path} - '{find_text}' -> '{replace_text}'")
+    
+    try:
+        if not Path(file_path).exists():
+            return [TextContent(type="text", text=f"Error: File does not exist: {file_path}")]
+        
+        # Read file
+        with open(file_path, 'r', encoding=encoding) as f:
+            content = f.read()
+        
+        # If line range specified, work with specific lines
+        if line_start is not None or line_end is not None:
+            lines = content.split('\n')
+            start_idx = (line_start - 1) if line_start else 0
+            end_idx = line_end if line_end else len(lines)
+            
+            # Validate range
+            if start_idx < 0 or end_idx > len(lines) or start_idx >= end_idx:
+                return [TextContent(type="text", text=f"Error: Invalid line range {line_start}-{line_end}. File has {len(lines)} lines.")]
+            
+            # Apply replacements to the specified range
+            replacements_made = 0
+            for i in range(start_idx, end_idx):
+                if max_replacements > 0 and replacements_made >= max_replacements:
+                    break
+                new_line = lines[i].replace(find_text, replace_text)
+                if new_line != lines[i]:
+                    lines[i] = new_line
+                    replacements_made += 1
+            
+            new_content = '\n'.join(lines)
+        else:
+            # Replace in entire file
+            if max_replacements > 0:
+                # Count replacements manually for limited replacements
+                replacements_made = 0
+                new_content = content
+                while replacements_made < max_replacements and find_text in new_content:
+                    new_content = new_content.replace(find_text, replace_text, 1)
+                    replacements_made += 1
+            else:
+                # Replace all
+                new_content = content.replace(find_text, replace_text)
+                replacements_made = content.count(find_text)
+        
+        # Write back if changes were made
+        if new_content != content:
+            with open(file_path, 'w', encoding=encoding) as f:
+                f.write(new_content)
+        
+        result = {
+            "success": True,
+            "file_path": file_path,
+            "find": find_text,
+            "replace": replace_text,
+            "replacements_made": replacements_made,
+            "line_range": f"{line_start}-{line_end}" if line_start or line_end else "entire file",
+            "message": f"Made {replacements_made} replacements"
+        }
+        
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error in find/replace: {str(e)}")]
+
+
+async def file_info(args: Dict[str, Any]) -> List[TextContent]:
+    """Get file metadata and information"""
+    file_path = args.get("file_path")
+    include_preview = args.get("include_preview", False)
+    
+    logger.info(f"Getting file info for: {file_path}")
+    
+    try:
+        path = Path(file_path)
+        
+        if not path.exists():
+            return [TextContent(type="text", text=f"Error: File does not exist: {file_path}")]
+        
+        # Get file stats
+        stat = path.stat()
+        
+        result = {
+            "file_path": str(path.absolute()),
+            "exists": True,
+            "is_file": path.is_file(),
+            "is_directory": path.is_dir(),
+            "size_bytes": stat.st_size,
+            "size_human": _human_readable_size(stat.st_size),
+            "modified_time": stat.st_mtime,
+            "created_time": stat.st_ctime,
+            "permissions": oct(stat.st_mode)[-3:],
+            "owner_readable": bool(stat.st_mode & 0o400),
+            "owner_writable": bool(stat.st_mode & 0o200),
+            "owner_executable": bool(stat.st_mode & 0o100)
+        }
+        
+        # Add line count for text files
+        if path.is_file() and stat.st_size < 10 * 1024 * 1024:  # Under 10MB
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    result["line_count"] = len(lines)
+                    result["is_text_file"] = True
+                    
+                    if include_preview and lines:
+                        preview_lines = min(5, len(lines))
+                        result["preview"] = {
+                            "first_lines": [line.rstrip('\n') for line in lines[:preview_lines]],
+                            "total_lines": len(lines)
+                        }
+            except (UnicodeDecodeError, PermissionError):
+                result["is_text_file"] = False
+        
+        # Check if file might be actively modified
+        import time
+        current_time = time.time()
+        recently_modified = (current_time - stat.st_mtime) < 300  # Modified within 5 minutes
+        result["recently_modified"] = recently_modified
+        result["modification_warning"] = "File was modified recently - may be in use by other processes" if recently_modified else None
+        
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error getting file info: {str(e)}")]
+
+
+def _human_readable_size(size_bytes: int) -> str:
+    """Convert bytes to human readable format"""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.1f} PB"
