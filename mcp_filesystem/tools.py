@@ -136,7 +136,7 @@ def get_tools_list():
         ),
         Tool(
             name="create_text_file",
-            description="Create a new text file with given content. Use this for creating new files from scratch or completely replacing file contents.",
+            description="Create a new text file with given content or overwrite existing file. No hash validation needed.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -159,7 +159,7 @@ def get_tools_list():
         ),
         Tool(
             name="append_text_file_contents",
-            description="Append content to the end of an existing file with hash validation. Use this when you need to safely add content to a file and want to ensure no concurrent modifications occurred. For simple appends without validation concerns, consider using 'echo \"content\" >> file' with execute_command.",
+            description="Append content to the end of a file. Creates file if it doesn't exist. No hash validation - just appends.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -171,17 +171,14 @@ def get_tools_list():
                         "type": "string",
                         "description": "Content to append to the file"
                     },
-                    "file_hash": {
-                        "type": "string",
-                        "description": "Hash of the file contents for concurrency control"
-                    },
+
                     "encoding": {
                         "type": "string",
                         "description": "Text encoding",
                         "default": "utf-8"
                     }
                 },
-                "required": ["file_path", "contents", "file_hash"]
+                "required": ["file_path", "contents"]
             }
         ),
         Tool(
@@ -206,17 +203,14 @@ def get_tools_list():
                         "type": "string",
                         "description": "Content to insert"
                     },
-                    "file_hash": {
-                        "type": "string",
-                        "description": "Hash of the file contents for concurrency control"
-                    },
+
                     "encoding": {
                         "type": "string",
                         "description": "Text encoding",
                         "default": "utf-8"
                     }
                 },
-                "required": ["file_path", "contents", "file_hash"]
+                "required": ["file_path", "contents"]
             }
         ),
         Tool(
@@ -260,7 +254,7 @@ def get_tools_list():
                         "default": "utf-8"
                     }
                 },
-                "required": ["file_path", "file_hash", "ranges"]
+                "required": ["file_path", "ranges"]
             }
         ),
         Tool(
@@ -308,7 +302,7 @@ def get_tools_list():
                         "default": "utf-8"
                     }
                 },
-                "required": ["file_path", "file_hash", "patches"]
+                "required": ["file_path", "patches"]
             }
         ),
         Tool(
