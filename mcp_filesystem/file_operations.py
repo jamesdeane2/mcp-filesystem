@@ -1,5 +1,5 @@
 """
-File operation tools for MCP Filesystem Server - Simplified version without hash validation
+File operation tools for MCP Filesystem Server
 """
 
 import json
@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List
 from mcp.types import TextContent
+from .utils import resolve_path
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +17,12 @@ async def write_file(args: Dict[str, Any]) -> List[TextContent]:
     file_path = args.get("file_path")
     contents = args.get("contents", "")
     encoding = args.get("encoding", "utf-8")
+    working_directory = args.get("working_directory")
     
     logger.info(f"Writing file: {file_path}")
     
     try:
-        path = Path(file_path)
+        path = resolve_path(file_path, working_directory)
         
         # Create directory if it doesn't exist
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -49,11 +51,12 @@ async def append_to_file(args: Dict[str, Any]) -> List[TextContent]:
     file_path = args.get("file_path")
     contents = args.get("contents", "")
     encoding = args.get("encoding", "utf-8")
+    working_directory = args.get("working_directory")
     
     logger.info(f"Appending to file: {file_path}")
     
     try:
-        path = Path(file_path)
+        path = resolve_path(file_path, working_directory)
         
         # Create directory if it doesn't exist
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -82,11 +85,12 @@ async def replace_line(args: Dict[str, Any]) -> List[TextContent]:
     line_number = args.get("line_number")
     new_content = args.get("new_content")
     encoding = args.get("encoding", "utf-8")
+    working_directory = args.get("working_directory")
     
     logger.info(f"Replacing line {line_number} in file: {file_path}")
     
     try:
-        path = Path(file_path)
+        path = resolve_path(file_path, working_directory)
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({
@@ -145,11 +149,12 @@ async def find_replace(args: Dict[str, Any]) -> List[TextContent]:
     replace_text = args.get("replace")
     count = args.get("count", 0)  # 0 means replace all
     encoding = args.get("encoding", "utf-8")
+    working_directory = args.get("working_directory")
     
     logger.info(f"Find/replace in file: {file_path} - '{find_text}' -> '{replace_text}'")
     
     try:
-        path = Path(file_path)
+        path = resolve_path(file_path, working_directory)
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({
@@ -211,11 +216,12 @@ async def read_file(args: Dict[str, Any]) -> List[TextContent]:
     start_line = args.get("start_line", 1)
     end_line = args.get("end_line")  # None means to end of file
     encoding = args.get("encoding", "utf-8")
+    working_directory = args.get("working_directory")
     
     logger.info(f"Reading file: {file_path}")
     
     try:
-        path = Path(file_path)
+        path = resolve_path(file_path, working_directory)
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({
@@ -275,6 +281,7 @@ async def get_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
     """Legacy function - simplified version for backwards compatibility"""
     files = args.get("files", [])
     encoding = args.get("encoding", "utf-8")
+    working_directory = args.get("working_directory")
     
     if not files:
         return [TextContent(type="text", text="No files specified")]
@@ -286,7 +293,7 @@ async def get_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
     
     # If no ranges specified, read whole file
     if not ranges:
-        return await read_file({"file_path": file_path, "encoding": encoding})
+        return await read_file({"file_path": file_path, "encoding": encoding, "working_directory": working_directory})
     
     # Read first range only
     range_info = ranges[0]
@@ -294,16 +301,18 @@ async def get_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
         "file_path": file_path,
         "start_line": range_info.get("start", 1),
         "end_line": range_info.get("end"),
-        "encoding": encoding
+        "encoding": encoding,
+        "working_directory": working_directory
     })
 
 
 async def append_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - now ignores hash and just appends"""
+    """Legacy function - redirects to append_to_file"""
     return await append_to_file({
         "file_path": args.get("file_path"),
         "contents": args.get("contents", ""),
-        "encoding": args.get("encoding", "utf-8")
+        "encoding": args.get("encoding", "utf-8"),
+        "working_directory": args.get("working_directory")
     })
 
 
@@ -319,45 +328,24 @@ async def quick_find_replace(args: Dict[str, Any]) -> List[TextContent]:
         "find": args.get("find"),
         "replace": args.get("replace"),
         "count": args.get("max_replacements", 0),
-        "encoding": args.get("encoding", "utf-8")
+        "encoding": args.get("encoding", "utf-8"),
+        "working_directory": args.get("working_directory")
     })
 
 
-# Stub functions for the hash-based operations that just redirect to simpler versions
-async def insert_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - now just appends without hash check"""
-    return await append_to_file({
-        "file_path": args.get("file_path"),
-        "contents": args.get("contents", ""),
-        "encoding": args.get("encoding", "utf-8")
-    })
 
-
-async def delete_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - simplified to return error message"""
-    return [TextContent(type="text", text=json.dumps({
-        "error": "delete_text_file_contents is deprecated",
-        "suggestion": "Use replace_line with empty content or find_replace to remove text"
-    }, indent=2))]
-
-
-async def patch_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - simplified to return error message"""
-    return [TextContent(type="text", text=json.dumps({
-        "error": "patch_text_file_contents is deprecated", 
-        "suggestion": "Use write_file to rewrite the entire file, or find_replace for specific changes"
-    }, indent=2))]
 
 
 async def file_info(args: Dict[str, Any]) -> List[TextContent]:
     """Get file metadata and information"""
     file_path = args.get("file_path")
     include_preview = args.get("include_preview", False)
+    working_directory = args.get("working_directory")
     
     logger.info(f"Getting file info for: {file_path}")
     
     try:
-        path = Path(file_path)
+        path = resolve_path(file_path, working_directory)
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({

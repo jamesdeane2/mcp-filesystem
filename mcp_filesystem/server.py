@@ -44,6 +44,8 @@ class FilesystemServer:
                 # Route to appropriate handler based on tool name
                 if name == "execute_command":
                     return await system_operations.execute_command(arguments)
+                elif name == "change_directory":
+                    return await system_operations.change_directory(arguments)
                 elif name == "list_files":
                     return await system_operations.list_files(arguments)
                 elif name == "search_files":
@@ -54,12 +56,7 @@ class FilesystemServer:
                     return await file_operations.create_text_file(arguments)
                 elif name == "append_text_file_contents":
                     return await file_operations.append_text_file_contents(arguments)
-                elif name == "insert_text_file_contents":
-                    return await file_operations.insert_text_file_contents(arguments)
-                elif name == "delete_text_file_contents":
-                    return await file_operations.delete_text_file_contents(arguments)
-                elif name == "patch_text_file_contents":
-                    return await file_operations.patch_text_file_contents(arguments)
+
                 # Async command operations
                 elif name == "execute_command_async":
                     return await async_operations.execute_command_async(arguments)

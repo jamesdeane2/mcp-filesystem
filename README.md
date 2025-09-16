@@ -12,12 +12,12 @@ This server provides comprehensive filesystem operations through MCP tools:
 - **search_files** - Search for files by pattern with glob support
 
 ### File Reading & Writing
-- **get_text_file_contents** - Read specific line ranges with hash support for safe editing
+- **get_text_file_contents** - Read specific line ranges from files
 - **create_text_file** - Create new text files
-- **append_text_file_contents** - Append content to files with hash validation
-- **insert_text_file_contents** - Insert content at specific line positions
-- **delete_text_file_contents** - Delete specific line ranges
-- **patch_text_file_contents** - Replace line ranges with new content
+- **append_text_file_contents** - Append content to files
+- **quick_edit_line** - Replace specific lines in files  
+- **quick_find_replace** - Find and replace text in files
+- **file_info** - Get file metadata and information
 
 
 ### Async Command Execution (NEW!)
@@ -117,20 +117,18 @@ Once configured, you can interact with the filesystem through Claude:
 - "Read lines 10-20 from config.py"
 - "Append a new log entry to logfile.txt"
 
-## File Editing Safety
+## File Operations
 
-The server uses a hash-based system to prevent conflicts when editing files:
+The server provides straightforward file operations without hash validation for simplicity:
 
-1. **Simple operations** (recommended):
-   - `append_text_file_contents` - Just needs file hash
-   - `insert_text_file_contents` - Insert before/after a line, only needs file hash
-   - `create_text_file` - Create or overwrite entire files
+- `create_text_file` - Create or overwrite entire files
+- `append_text_file_contents` - Append content to files 
+- `quick_edit_line` - Replace specific lines by line number
+- `quick_find_replace` - Find and replace text patterns
+- `get_text_file_contents` - Read file contents or specific line ranges
+- `file_info` - Get file metadata, size, permissions, etc.
 
-2. **Complex operations** (use carefully):
-   - `patch_text_file_contents` - Replace specific line ranges (needs both file and range hashes)
-   - `delete_text_file_contents` - Delete specific line ranges (needs both file and range hashes)
-
-Always call `get_text_file_contents` before editing to get current hashes!
+For complex file operations, you can also use shell commands via `execute_command`.
 
 ## Development
 
@@ -158,7 +156,7 @@ The server is organized into modules for better maintainability:
 - **tools.py**: Tool definitions and JSON schemas
 - **file_operations.py**: All file manipulation functions
 - **system_operations.py**: System commands and directory operations
-- **utils.py**: Shared utilities like hashing and pattern matching
+- **utils.py**: Shared utilities like pattern matching
 
 Each module is focused on a specific aspect of functionality, making it easy to:
 - Add new tools
