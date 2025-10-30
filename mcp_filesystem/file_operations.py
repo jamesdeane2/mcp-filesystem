@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 async def write_file(args: Dict[str, Any]) -> List[TextContent]:
-    """Write or overwrite a file with given content. No questions asked."""
+    """Write or overwrite a file with given content. Maps from create_text_file tool."""
     file_path = args.get("file_path")
     contents = args.get("contents", "")
     encoding = args.get("encoding", "utf-8")
@@ -111,14 +111,11 @@ async def replace_line(args: Dict[str, Any]) -> List[TextContent]:
             }, indent=2))]
         
         # Store old content for response
-        old_content = lines[line_number - 1].rstrip('\
-')
+        old_content = lines[line_number - 1].rstrip('\n')
         
         # Replace the line (preserve newline if original had one)
-        if lines[line_number - 1].endswith('\
-'):
-            lines[line_number - 1] = new_content + '\
-'
+        if lines[line_number - 1].endswith('\n'):
+            lines[line_number - 1] = new_content + '\n'
         else:
             lines[line_number - 1] = new_content
         
@@ -143,11 +140,11 @@ async def replace_line(args: Dict[str, Any]) -> List[TextContent]:
 
 
 async def find_replace(args: Dict[str, Any]) -> List[TextContent]:
-    """Find and replace text in a file."""
+    """Find and replace text in a file. Maps from quick_find_replace tool."""
     file_path = args.get("file_path")
     find_text = args.get("find")
     replace_text = args.get("replace")
-    count = args.get("count", 0)  # 0 means replace all
+    count = args.get("max_replacements", 0)  # 0 means replace all
     encoding = args.get("encoding", "utf-8")
     working_directory = args.get("working_directory")
     
@@ -211,10 +208,31 @@ async def find_replace(args: Dict[str, Any]) -> List[TextContent]:
 
 
 async def read_file(args: Dict[str, Any]) -> List[TextContent]:
-    """Read a file or specific line ranges from a file."""
-    file_path = args.get("file_path")
-    start_line = args.get("start_line", 1)
-    end_line = args.get("end_line")  # None means to end of file
+    """Read a file with support for complex schemas from get_text_file_contents tool."""
+    # Handle both simple read_file args and complex get_text_file_contents schema
+    files = args.get("files")
+    
+    if files:
+        # This is from get_text_file_contents tool with complex schema
+        file_info = files[0]  # Just handle the first file for simplicity
+        file_path = file_info.get("file_path")
+        ranges = file_info.get("ranges", [])
+        
+        # If no ranges specified, read whole file
+        if not ranges:
+            start_line = 1
+            end_line = None
+        else:
+            # Read first range only
+            range_info = ranges[0]
+            start_line = range_info.get("start", 1)
+            end_line = range_info.get("end")
+    else:
+        # Simple direct call
+        file_path = args.get("file_path")
+        start_line = args.get("start_line", 1)
+        end_line = args.get("end_line")
+    
     encoding = args.get("encoding", "utf-8")
     working_directory = args.get("working_directory")
     
@@ -259,8 +277,7 @@ async def read_file(args: Dict[str, Any]) -> List[TextContent]:
             "file_path": str(path.absolute()),
             "total_lines": total_lines,
             "lines_read": f"{start_line}-{end_line}",
-            "content": content.rstrip('\
-'),  # Remove trailing newline for cleaner output
+            "content": content.rstrip('\n'),  # Remove trailing newline for cleaner output
             "file_size": path.stat().st_size
         }
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
@@ -269,71 +286,6 @@ async def read_file(args: Dict[str, Any]) -> List[TextContent]:
             "error": str(e),
             "file_path": file_path
         }, indent=2))]
-
-
-# Keep these for backwards compatibility, but map them to the new simple functions
-async def create_text_file(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - now just calls write_file"""
-    return await write_file(args)
-
-
-async def get_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - simplified version for backwards compatibility"""
-    files = args.get("files", [])
-    encoding = args.get("encoding", "utf-8")
-    working_directory = args.get("working_directory")
-    
-    if not files:
-        return [TextContent(type="text", text="No files specified")]
-    
-    # Handle the first file only for simplicity
-    file_info = files[0]
-    file_path = file_info.get("file_path")
-    ranges = file_info.get("ranges", [])
-    
-    # If no ranges specified, read whole file
-    if not ranges:
-        return await read_file({"file_path": file_path, "encoding": encoding, "working_directory": working_directory})
-    
-    # Read first range only
-    range_info = ranges[0]
-    return await read_file({
-        "file_path": file_path,
-        "start_line": range_info.get("start", 1),
-        "end_line": range_info.get("end"),
-        "encoding": encoding,
-        "working_directory": working_directory
-    })
-
-
-async def append_text_file_contents(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - redirects to append_to_file"""
-    return await append_to_file({
-        "file_path": args.get("file_path"),
-        "contents": args.get("contents", ""),
-        "encoding": args.get("encoding", "utf-8"),
-        "working_directory": args.get("working_directory")
-    })
-
-
-async def quick_edit_line(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - now just calls replace_line"""
-    return await replace_line(args)
-
-
-async def quick_find_replace(args: Dict[str, Any]) -> List[TextContent]:
-    """Legacy function - now just calls find_replace"""
-    return await find_replace({
-        "file_path": args.get("file_path"),
-        "find": args.get("find"),
-        "replace": args.get("replace"),
-        "count": args.get("max_replacements", 0),
-        "encoding": args.get("encoding", "utf-8"),
-        "working_directory": args.get("working_directory")
-    })
-
-
-
 
 
 async def file_info(args: Dict[str, Any]) -> List[TextContent]:
@@ -373,7 +325,7 @@ async def file_info(args: Dict[str, Any]) -> List[TextContent]:
         # Add line count for text files
         if path.is_file() and stat.st_size < 10 * 1024 * 1024:  # Under 10MB
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(path, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                     result["line_count"] = len(lines)
                     result["is_text_file"] = True
@@ -381,8 +333,7 @@ async def file_info(args: Dict[str, Any]) -> List[TextContent]:
                     if include_preview and lines:
                         preview_lines = min(5, len(lines))
                         result["preview"] = {
-                            "first_lines": [line.rstrip('\
-') for line in lines[:preview_lines]],
+                            "first_lines": [line.rstrip('\n') for line in lines[:preview_lines]],
                             "total_lines": len(lines)
                         }
             except (UnicodeDecodeError, PermissionError):

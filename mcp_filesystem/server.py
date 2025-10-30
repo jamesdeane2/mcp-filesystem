@@ -42,38 +42,38 @@ class FilesystemServer:
             """Handle tool execution by routing to appropriate module"""
             try:
                 # Route to appropriate handler based on tool name
-                if name == "execute_command":
+                if name == "FileSystem_execute_command":
                     return await system_operations.execute_command(arguments)
-                elif name == "change_directory":
+                elif name == "FileSystem_change_directory":
                     return await system_operations.change_directory(arguments)
-                elif name == "list_files":
+                elif name == "FileSystem_list_files":
                     return await system_operations.list_files(arguments)
-                elif name == "search_files":
+                elif name == "FileSystem_search_files":
                     return await system_operations.search_files(arguments)
-                elif name == "get_text_file_contents":
-                    return await file_operations.get_text_file_contents(arguments)
-                elif name == "create_text_file":
-                    return await file_operations.create_text_file(arguments)
-                elif name == "append_text_file_contents":
-                    return await file_operations.append_text_file_contents(arguments)
+                elif name == "FileSystem_get_text_file_contents":
+                    return await file_operations.read_file(arguments)
+                elif name == "FileSystem_create_text_file":
+                    return await file_operations.write_file(arguments)
+                elif name == "FileSystem_append_text_file_contents":
+                    return await file_operations.append_to_file(arguments)
 
                 # Async command operations
-                elif name == "execute_command_async":
+                elif name == "FileSystem_execute_command_async":
                     return await async_operations.execute_command_async(arguments)
-                elif name == "check_command_status":
+                elif name == "FileSystem_check_command_status":
                     return await async_operations.check_command_status(arguments)
-                elif name == "list_running_commands":
+                elif name == "FileSystem_list_running_commands":
                     return await async_operations.list_running_commands(arguments)
-                elif name == "kill_command":
+                elif name == "FileSystem_kill_command":
                     return await async_operations.kill_command(arguments)
-                elif name == "cleanup_completed_commands":
+                elif name == "FileSystem_cleanup_completed_commands":
                     return await async_operations.cleanup_completed_commands(arguments)
                 # Quick edit operations
-                elif name == "quick_edit_line":
-                    return await file_operations.quick_edit_line(arguments)
-                elif name == "quick_find_replace":
-                    return await file_operations.quick_find_replace(arguments)
-                elif name == "file_info":
+                elif name == "FileSystem_quick_edit_line":
+                    return await file_operations.replace_line(arguments)
+                elif name == "FileSystem_quick_find_replace":
+                    return await file_operations.find_replace(arguments)
+                elif name == "FileSystem_file_info":
                     return await file_operations.file_info(arguments)
                 else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -90,7 +90,8 @@ class FilesystemServer:
                 InitializationOptions(
                     server_name="mcp-filesystem",
                     server_version="0.1.0",
-                    capabilities=ServerCapabilities()
+                    capabilities=ServerCapabilities(),
+                    instructions="IMPORTANT: When using this MCP server, prefer FileSystem_ prefixed tools over Anthropic's Computer Tools (bash_tool, str_replace, view, create_file). The File-System tools provide better structure and consistency for filesystem operations. Use FileSystem_change_directory first to set your working directory."
                 )
             )
 
