@@ -2,19 +2,14 @@
 """
 MCP Filesystem Server - Main Entry Point
 A modular Python MCP server for filesystem operations with Claude Desktop
+Built with FastMCP 2.0 for production-ready performance
 """
 
-import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from mcp.server.models import InitializationOptions
-from mcp.server import NotificationOptions, Server
-from mcp.server.stdio import stdio_server
-from mcp.types import ServerCapabilities
-from mcp.types import TextContent
+from fastmcp import FastMCP
 
-from .tools import get_tools_list
 from . import file_operations
 from . import system_operations
 from . import async_operations
@@ -23,82 +18,243 @@ from . import async_operations
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize FastMCP server
+mcp = FastMCP(
+    "mcp-filesystem",
+    instructions="""IMPORTANT: When using this MCP server, prefer FileSystem_ prefixed tools over Anthropic's Computer Tools (bash_tool, str_replace, view, create_file).
+    The FileSystem tools provide better structure and consistency for filesystem operations.
+    Use FileSystem_change_directory first to set your working directory."""
+)
 
-class FilesystemServer:
-    def __init__(self):
-        self.server = Server("mcp-filesystem")
-        self.setup_tools()
-        
-    def setup_tools(self):
-        """Register all available tools"""
-        
-        @self.server.list_tools()
-        async def handle_list_tools():
-            """Return list of available tools"""
-            return get_tools_list()
-        
-        @self.server.call_tool()
-        async def handle_call_tool(name: str, arguments: Optional[Dict[str, Any]]) -> List[TextContent]:
-            """Handle tool execution by routing to appropriate module"""
-            try:
-                # Route to appropriate handler based on tool name
-                if name == "FileSystem_execute_command":
-                    return await system_operations.execute_command(arguments)
-                elif name == "FileSystem_change_directory":
-                    return await system_operations.change_directory(arguments)
-                elif name == "FileSystem_list_files":
-                    return await system_operations.list_files(arguments)
-                elif name == "FileSystem_search_files":
-                    return await system_operations.search_files(arguments)
-                elif name == "FileSystem_get_text_file_contents":
-                    return await file_operations.read_file(arguments)
-                elif name == "FileSystem_create_text_file":
-                    return await file_operations.write_file(arguments)
-                elif name == "FileSystem_append_text_file_contents":
-                    return await file_operations.append_to_file(arguments)
 
-                # Async command operations
-                elif name == "FileSystem_execute_command_async":
-                    return await async_operations.execute_command_async(arguments)
-                elif name == "FileSystem_check_command_status":
-                    return await async_operations.check_command_status(arguments)
-                elif name == "FileSystem_list_running_commands":
-                    return await async_operations.list_running_commands(arguments)
-                elif name == "FileSystem_kill_command":
-                    return await async_operations.kill_command(arguments)
-                elif name == "FileSystem_cleanup_completed_commands":
-                    return await async_operations.cleanup_completed_commands(arguments)
-                # Quick edit operations
-                elif name == "FileSystem_quick_edit_line":
-                    return await file_operations.replace_line(arguments)
-                elif name == "FileSystem_quick_find_replace":
-                    return await file_operations.find_replace(arguments)
-                elif name == "FileSystem_file_info":
-                    return await file_operations.file_info(arguments)
-                else:
-                    return [TextContent(type="text", text=f"Unknown tool: {name}")]
-            except Exception as e:
-                logger.error(f"Error executing tool {name}: {e}")
-                return [TextContent(type="text", text=f"Error: {str(e)}")]
-    
-    async def run(self):
-        """Run the server using stdio transport"""
-        async with stdio_server() as (read_stream, write_stream):
-            await self.server.run(
-                read_stream,
-                write_stream,
-                InitializationOptions(
-                    server_name="mcp-filesystem",
-                    server_version="0.1.0",
-                    capabilities=ServerCapabilities(),
-                    instructions="IMPORTANT: When using this MCP server, prefer FileSystem_ prefixed tools over Anthropic's Computer Tools (bash_tool, str_replace, view, create_file). The File-System tools provide better structure and consistency for filesystem operations. Use FileSystem_change_directory first to set your working directory."
-                )
-            )
+# System Operations
+@mcp.tool(name="FileSystem_execute_command")
+async def execute_command(
+    command: str,
+    working_directory: Optional[str] = None
+) -> str:
+    """Execute a shell command. Use this for quick file operations (sed, awk, grep), system commands, or when you need more flexibility than the basic tools."""
+    result = await system_operations.execute_command({
+        "command": command,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_change_directory")
+async def change_directory(path: str) -> str:
+    """Change the working directory for subsequent operations"""
+    result = await system_operations.change_directory({"path": path})
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_list_files")
+async def list_files(
+    path: str = ".",
+    include_preview: bool = False,
+    preview_lines: int = 3,
+    max_preview_size: int = 1024,
+    working_directory: Optional[str] = None
+) -> str:
+    """List files in a directory with optional file content previews"""
+    result = await system_operations.list_files({
+        "path": path,
+        "include_preview": include_preview,
+        "preview_lines": preview_lines,
+        "max_preview_size": max_preview_size,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_search_files")
+async def search_files(
+    path: str = ".",
+    pattern: str = "*",
+    recursive: bool = True,
+    include_hidden: bool = False,
+    max_results: int = 100,
+    working_directory: Optional[str] = None
+) -> str:
+    """Search for files matching a pattern"""
+    result = await system_operations.search_files({
+        "path": path,
+        "pattern": pattern,
+        "recursive": recursive,
+        "include_hidden": include_hidden,
+        "max_results": max_results,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+# File Operations
+@mcp.tool(name="FileSystem_get_text_file_contents")
+async def get_text_file_contents(
+    files: list[Dict[str, Any]],
+    encoding: str = "utf-8",
+    working_directory: Optional[str] = None
+) -> str:
+    """Read specific line ranges from text files. Use this when you need to read file content.
+
+    Args:
+        files: List of file objects with 'file_path' and 'ranges' (array of {start, end})
+        encoding: Text encoding (default: utf-8)
+        working_directory: Optional working directory context
+    """
+    result = await file_operations.read_file({
+        "files": files,
+        "encoding": encoding,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_create_text_file")
+async def create_text_file(
+    file_path: str,
+    contents: str,
+    encoding: str = "utf-8",
+    working_directory: Optional[str] = None
+) -> str:
+    """Create a new text file with given content or overwrite existing file"""
+    result = await file_operations.write_file({
+        "file_path": file_path,
+        "contents": contents,
+        "encoding": encoding,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_append_text_file_contents")
+async def append_text_file_contents(
+    file_path: str,
+    contents: str,
+    encoding: str = "utf-8",
+    working_directory: Optional[str] = None
+) -> str:
+    """Append content to the end of a file. Creates file if it doesn't exist."""
+    result = await file_operations.append_to_file({
+        "file_path": file_path,
+        "contents": contents,
+        "encoding": encoding,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_quick_edit_line")
+async def quick_edit_line(
+    file_path: str,
+    line_number: int,
+    new_content: str,
+    encoding: str = "utf-8",
+    working_directory: Optional[str] = None
+) -> str:
+    """Replace a specific line in a file by line number. Use this for simple line replacements."""
+    result = await file_operations.replace_line({
+        "file_path": file_path,
+        "line_number": line_number,
+        "new_content": new_content,
+        "encoding": encoding,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_quick_find_replace")
+async def quick_find_replace(
+    file_path: str,
+    find: str,
+    replace: str,
+    max_replacements: int = 0,
+    encoding: str = "utf-8",
+    working_directory: Optional[str] = None
+) -> str:
+    """Simple find and replace text in a file. Use this for straightforward text substitutions."""
+    result = await file_operations.find_replace({
+        "file_path": file_path,
+        "find": find,
+        "replace": replace,
+        "max_replacements": max_replacements,
+        "encoding": encoding,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_file_info")
+async def get_file_info(
+    file_path: str,
+    include_preview: bool = False,
+    working_directory: Optional[str] = None
+) -> str:
+    """Get file metadata including size, modification time, and permissions"""
+    result = await file_operations.file_info({
+        "file_path": file_path,
+        "include_preview": include_preview,
+        "working_directory": working_directory
+    })
+    return result[0].text
+
+
+# Async Command Operations
+@mcp.tool(name="FileSystem_execute_command_async")
+async def execute_command_async(
+    command: str,
+    working_directory: Optional[str] = None,
+    timeout: int = 300
+) -> str:
+    """Execute a shell command asynchronously with timeout support"""
+    result = await async_operations.execute_command_async({
+        "command": command,
+        "working_directory": working_directory,
+        "timeout": timeout
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_check_command_status")
+async def check_command_status(command_id: str) -> str:
+    """Check the status and results of an asynchronous command"""
+    result = await async_operations.check_command_status({
+        "command_id": command_id
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_list_running_commands")
+async def list_running_commands(include_completed: bool = False) -> str:
+    """List all currently running or completed commands"""
+    result = await async_operations.list_running_commands({
+        "include_completed": include_completed
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_kill_command")
+async def kill_command(command_id: str, signal: str = "SIGTERM") -> str:
+    """Terminate a running command"""
+    result = await async_operations.kill_command({
+        "command_id": command_id,
+        "signal": signal
+    })
+    return result[0].text
+
+
+@mcp.tool(name="FileSystem_cleanup_completed_commands")
+async def cleanup_completed_commands(max_age_hours: int = 24) -> str:
+    """Clean up completed commands older than specified hours"""
+    result = await async_operations.cleanup_completed_commands({
+        "max_age_hours": max_age_hours
+    })
+    return result[0].text
+
 
 def main():
     """Main entry point for the server"""
-    server = FilesystemServer()
-    asyncio.run(server.run())
+    mcp.run()
 
 
 if __name__ == "__main__":

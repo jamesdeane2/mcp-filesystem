@@ -1,9 +1,7 @@
 """
 MCP Filesystem Server Package
+Built with FastMCP 2.0 for production-ready performance
 """
 
-from .server import FilesystemServer
-
-__version__ = "0.1.0"
-__all__ = ["FilesystemServer"]
+__version__ = "0.2.0"
 
