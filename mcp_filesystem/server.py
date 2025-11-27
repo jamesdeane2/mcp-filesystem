@@ -91,7 +91,7 @@ class FilesystemServer:
                     server_name="mcp-filesystem",
                     server_version="0.1.0",
                     capabilities=ServerCapabilities(),
-                    instructions="IMPORTANT: When using this MCP server, prefer FileSystem_ prefixed tools over Anthropic's Computer Tools (bash_tool, str_replace, view, create_file). The File-System tools provide better structure and consistency for filesystem operations. Use FileSystem_change_directory first to set your working directory."
+                    instructions="IMPORTANT: Claude has access to two file systems. Tools prefixed FileSystem_ access the humans Mac OS device. The FileSystem_ tools provide better structure and consistency for filesystem operations. Use FileSystem_change_directory first to set your working directory, the default is '/', you have unlimited access to '/Users/admin/Documents/Scripts/AI/Claude/Notes/cache/' if no directory is specified, save files there. Prefer the FileSystem_ tools over Anthropic's Computer Tools (bash_tool, str_replace, view, create_file) that cannot be transferred between context windows."
                 )
             )
 
