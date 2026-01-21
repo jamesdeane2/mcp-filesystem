@@ -60,6 +60,7 @@ async def execute_command(args: Dict[str, Any]) -> List[TextContent]:
     """Execute a shell command"""
     command = args.get("command")
     working_directory = args.get("working_directory", os.getcwd())
+    timeout = args.get("timeout", 30)
     
     logger.info(f"Executing command: {command}")
     
@@ -70,7 +71,7 @@ async def execute_command(args: Dict[str, Any]) -> List[TextContent]:
             cwd=working_directory,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=timeout
         )
         
         return [TextContent(type="text", text=json.dumps({
@@ -85,7 +86,7 @@ async def execute_command(args: Dict[str, Any]) -> List[TextContent]:
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "command": command,
-            "error": "Command timed out after 30 seconds"
+            "error": f"Command timed out after {timeout} seconds"
         }, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({

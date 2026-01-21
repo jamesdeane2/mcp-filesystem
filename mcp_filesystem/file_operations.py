@@ -41,6 +41,7 @@ async def write_file(args: Dict[str, Any]) -> List[TextContent]:
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({
+            "success": False,
             "error": str(e),
             "file_path": file_path
         }, indent=2))]
@@ -74,6 +75,7 @@ async def append_to_file(args: Dict[str, Any]) -> List[TextContent]:
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({
+            "success": False,
             "error": str(e),
             "file_path": file_path
         }, indent=2))]
@@ -84,6 +86,7 @@ async def replace_line(args: Dict[str, Any]) -> List[TextContent]:
     file_path = args.get("file_path")
     line_number = args.get("line_number")
     new_content = args.get("new_content")
+    verbose = args.get("verbose", False)
     encoding = args.get("encoding", "utf-8")
     working_directory = args.get("working_directory")
     
@@ -94,6 +97,7 @@ async def replace_line(args: Dict[str, Any]) -> List[TextContent]:
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({
+                "success": False,
                 "error": f"File does not exist: {file_path}",
                 "suggestion": "Use write_file to create it first"
             }, indent=2))]
@@ -105,6 +109,7 @@ async def replace_line(args: Dict[str, Any]) -> List[TextContent]:
         # Validate line number
         if line_number < 1 or line_number > len(lines):
             return [TextContent(type="text", text=json.dumps({
+                "success": False,
                 "error": f"Line number {line_number} out of range",
                 "file_lines": len(lines),
                 "valid_range": f"1-{len(lines)}"
@@ -126,14 +131,17 @@ async def replace_line(args: Dict[str, Any]) -> List[TextContent]:
         result = {
             "success": True,
             "file_path": str(path.absolute()),
-            "line_number": line_number,
-            "old_content": old_content,
-            "new_content": new_content,
-            "message": f"Line {line_number} replaced successfully"
+            "line_number": line_number
         }
+        
+        if verbose:
+            result["old_content"] = old_content
+            result["new_content"] = new_content
+        
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({
+            "success": False,
             "error": str(e),
             "file_path": file_path
         }, indent=2))]
@@ -145,6 +153,7 @@ async def find_replace(args: Dict[str, Any]) -> List[TextContent]:
     find_text = args.get("find")
     replace_text = args.get("replace")
     count = args.get("max_replacements", 0)  # 0 means replace all
+    verbose = args.get("verbose", False)
     encoding = args.get("encoding", "utf-8")
     working_directory = args.get("working_directory")
     
@@ -155,6 +164,7 @@ async def find_replace(args: Dict[str, Any]) -> List[TextContent]:
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({
+                "success": False,
                 "error": f"File does not exist: {file_path}",
                 "suggestion": "Use write_file to create it first"
             }, indent=2))]
@@ -193,46 +203,28 @@ async def find_replace(args: Dict[str, Any]) -> List[TextContent]:
         result = {
             "success": True,
             "file_path": str(path.absolute()),
-            "find": find_text,
-            "replace": replace_text,
-            "occurrences_found": occurrences,
-            "replacements_made": replacements_made,
-            "message": f"Replaced {replacements_made} occurrence(s)"
+            "replacements_made": replacements_made
         }
+        
+        if verbose:
+            result["find"] = find_text
+            result["replace"] = replace_text
+            result["occurrences_found"] = occurrences
+        
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({
+            "success": False,
             "error": str(e),
             "file_path": file_path
         }, indent=2))]
 
 
 async def read_file(args: Dict[str, Any]) -> List[TextContent]:
-    """Read a file with support for complex schemas from get_text_file_contents tool."""
-    # Handle both simple read_file args and complex get_text_file_contents schema
-    files = args.get("files")
-    
-    if files:
-        # This is from get_text_file_contents tool with complex schema
-        file_info = files[0]  # Just handle the first file for simplicity
-        file_path = file_info.get("file_path")
-        ranges = file_info.get("ranges", [])
-        
-        # If no ranges specified, read whole file
-        if not ranges:
-            start_line = 1
-            end_line = None
-        else:
-            # Read first range only
-            range_info = ranges[0]
-            start_line = range_info.get("start", 1)
-            end_line = range_info.get("end")
-    else:
-        # Simple direct call
-        file_path = args.get("file_path")
-        start_line = args.get("start_line", 1)
-        end_line = args.get("end_line")
-    
+    """Read a file with optional line range."""
+    file_path = args.get("file_path")
+    start_line = args.get("start_line", 1)
+    end_line = args.get("end_line")
     encoding = args.get("encoding", "utf-8")
     working_directory = args.get("working_directory")
     
@@ -243,6 +235,7 @@ async def read_file(args: Dict[str, Any]) -> List[TextContent]:
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({
+                "success": False,
                 "error": f"File does not exist: {file_path}"
             }, indent=2))]
         
@@ -258,6 +251,7 @@ async def read_file(args: Dict[str, Any]) -> List[TextContent]:
         # Validate range
         if start_line < 1 or start_line > total_lines:
             return [TextContent(type="text", text=json.dumps({
+                "success": False,
                 "error": f"Invalid start line {start_line}",
                 "total_lines": total_lines,
                 "valid_range": f"1-{total_lines}"
@@ -265,6 +259,7 @@ async def read_file(args: Dict[str, Any]) -> List[TextContent]:
         
         if end_line < start_line or end_line > total_lines:
             return [TextContent(type="text", text=json.dumps({
+                "success": False,
                 "error": f"Invalid end line {end_line}",
                 "total_lines": total_lines,
                 "valid_range": f"{start_line}-{total_lines}"
@@ -274,15 +269,17 @@ async def read_file(args: Dict[str, Any]) -> List[TextContent]:
         content = ''.join(lines[start_line-1:end_line])
         
         result = {
+            "success": True,
             "file_path": str(path.absolute()),
             "total_lines": total_lines,
             "lines_read": f"{start_line}-{end_line}",
-            "content": content.rstrip('\n'),  # Remove trailing newline for cleaner output
+            "content": content.rstrip('\n'),
             "file_size": path.stat().st_size
         }
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({
+            "success": False,
             "error": str(e),
             "file_path": file_path
         }, indent=2))]
@@ -301,6 +298,7 @@ async def file_info(args: Dict[str, Any]) -> List[TextContent]:
         
         if not path.exists():
             return [TextContent(type="text", text=json.dumps({
+                "success": False,
                 "error": f"File does not exist: {file_path}"
             }, indent=2))]
         
@@ -308,6 +306,7 @@ async def file_info(args: Dict[str, Any]) -> List[TextContent]:
         stat = path.stat()
         
         result = {
+            "success": True,
             "file_path": str(path.absolute()),
             "exists": True,
             "is_file": path.is_file(),
@@ -316,10 +315,7 @@ async def file_info(args: Dict[str, Any]) -> List[TextContent]:
             "size_human": _human_readable_size(stat.st_size),
             "modified_time": stat.st_mtime,
             "created_time": stat.st_ctime,
-            "permissions": oct(stat.st_mode)[-3:],
-            "owner_readable": bool(stat.st_mode & 0o400),
-            "owner_writable": bool(stat.st_mode & 0o200),
-            "owner_executable": bool(stat.st_mode & 0o100)
+            "permissions": oct(stat.st_mode)[-3:]
         }
         
         # Add line count for text files
@@ -348,6 +344,7 @@ async def file_info(args: Dict[str, Any]) -> List[TextContent]:
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({
+            "success": False,
             "error": str(e),
             "file_path": file_path
         }, indent=2))]
