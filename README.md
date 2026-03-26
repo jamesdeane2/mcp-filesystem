@@ -55,31 +55,31 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 2. Install dependencies:
 ```bash
-cd /Users/admin/Documents/GitHub_James/mcp-filesystem
+cd /path/to/mcp-filesystem
 uv pip install mcp aiofiles click
 ```
 
 ### Using pip
 
 ```bash
-cd /Users/admin/Documents/GitHub_James/mcp-filesystem
+cd /path/to/mcp-filesystem
 pip install mcp aiofiles click
 ```
 
 ## Configuration
 
-Add to your Claude Desktop configuration file at `/Users/admin/Library/Application Support/Claude/claude_desktop_config.json`:
+Add to your Claude Desktop configuration file at `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "mcp-filesystem": {
-      "command": "/Users/admin/Documents/GitHub_James/mcp-filesystem/venv/bin/python",
+      "command": "/path/to/mcp-filesystem/venv/bin/python",
       "args": [
         "-m",
         "mcp_filesystem.server"
       ],
-      "cwd": "/Users/admin/Documents/GitHub_James/mcp-filesystem"
+      "cwd": "/path/to/mcp-filesystem"
     }
   }
 }
@@ -97,7 +97,7 @@ If you prefer to use UV instead of the virtual environment:
       "args": [
         "run",
         "--directory",
-        "/Users/admin/Documents/GitHub_James/mcp-filesystem",
+        "/path/to/mcp-filesystem",
         "python",
         "-m",
         "mcp_filesystem.server"
@@ -144,7 +144,7 @@ The server is built using:
 Run the test script to verify functionality:
 
 ```bash
-cd /Users/admin/Documents/GitHub_James/mcp-filesystem
+cd /path/to/mcp-filesystem
 uv run python test_server.py
 ```
 
