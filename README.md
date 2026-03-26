@@ -1,3 +1,7 @@
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![MCP](https://img.shields.io/badge/MCP-compatible-purple)
+
 # MCP Filesystem Server
 
 A modular Python MCP (Model Context Protocol) server for filesystem operations with Claude Desktop.
